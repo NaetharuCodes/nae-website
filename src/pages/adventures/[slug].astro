@@ -1,0 +1,166 @@
+---
+import { PortableText } from "astro-portabletext";
+import { client } from "../../lib/sanity";
+import "../../styles/global.css";
+
+export async function getStaticPaths() {
+  const adventures = await client.fetch(`
+    *[_type == "adventure"]{
+      "slug": slug.current
+    }
+  `);
+
+  return adventures.map((adventure: { slug: string }) => ({
+    params: { slug: adventure.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+
+const adventure = await client.fetch(
+  `*[_type == "adventure" && slug.current == $slug][0]{
+    title,
+    description,
+    ageRating,
+    recommendedPlayerCount,
+    bannerImage{
+      asset->{
+        url
+      },
+      alt
+    },
+    coverImage{
+      asset->{
+        url
+      },
+      alt
+    },
+    acts[]{
+        title,
+        description,
+        scenes[]{
+            title,
+            description, 
+            image{
+                asset->{
+                url
+                },
+                alt,
+            },
+            content
+        }
+    }
+}`,
+  { slug }
+);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{adventure.title}</title>
+  </head>
+  <body class="bg-gray-400 text-gray-800">
+    <!-- Hero Section -->
+    <!-- Hero Section with responsive images -->
+    <div class="relative bg-gray-900 text-white overflow-hidden">
+      <!-- Banner for desktop/tablet -->
+      {
+        adventure.bannerImage && (
+          <img
+            src={adventure.bannerImage.asset.url}
+            alt={adventure.bannerImage.alt}
+            class="hidden md:block absolute inset-0 w-full h-full object-cover opacity-50"
+          />
+        )
+      }
+
+      <!-- Cover for mobile -->
+      {
+        adventure.coverImage && (
+          <img
+            src={adventure.coverImage.asset.url}
+            alt={adventure.coverImage.alt}
+            class="md:hidden absolute inset-0 w-full h-full object-cover opacity-50"
+          />
+        )
+      }
+
+      <!-- Overlay for text readability -->
+      <div class="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40">
+      </div>
+
+      <!-- Content -->
+      <div class="relative max-w-4xl mx-auto px-4 py-16 md:py-24">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">{adventure.title}</h1>
+        <p class="text-lg md:text-xl text-gray-300 mb-6">
+          {adventure.description}
+        </p>
+
+        <div class="flex gap-4 text-sm">
+          <span class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+            {adventure.ageRating}
+          </span>
+          <span class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+            {adventure.recommendedPlayerCount} players
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div class="max-w-4xl mx-auto px-4 py-12">
+      <div class="space-y-16">
+        {
+          adventure.acts?.map((act: any, actIndex: number) => (
+            <section class="act">
+              <div class="mb-8">
+                <h2 class="text-3xl font-bold mb-3 text-gray-900">
+                  Act {actIndex + 1}: {act.title}
+                </h2>
+                {act.description && (
+                  <p class="text-lg text-gray-600 italic">{act.description}</p>
+                )}
+              </div>
+
+              <div class="space-y-12">
+                {act.scenes?.map((scene: any) => (
+                  <article class="scene bg-gray-900 rounded-lg shadow-md overflow-hidden">
+                    <div class="p-8">
+                      <h3 class="text-2xl font-bold mb-3 text-gray-200">
+                        {scene.title}
+                      </h3>
+
+                      {scene.description && (
+                        <p class="text-gray-200 mb-6 italic border-l-4 border-blue-600 pl-4">
+                          {scene.description}
+                        </p>
+                      )}
+
+                      {scene.image && (
+                        <div class="my-6 -mx-8">
+                          <img
+                            src={scene.image.asset.url}
+                            alt={scene.image.alt}
+                            class="w-full"
+                          />
+                        </div>
+                      )}
+
+                      <div class="prose prose-lg max-w-none text-gray-400">
+                        <PortableText value={scene.content} />
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Footer spacing -->
+    <div class="h-16"></div>
+  </body>
+</html>
