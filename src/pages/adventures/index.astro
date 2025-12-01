@@ -1,0 +1,37 @@
+---
+import { client } from "../../lib/sanity";
+import "../../styles/global.css";
+
+const adventures = await client.fetch(
+  `*[_type == "adventure"]{
+        title,
+        ageRating,
+        coverImage{
+            asset->{
+                url
+            },
+            alt
+        },
+        slug
+    }`
+);
+---
+
+<html>
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <h1>The Index Page for my adventures</h1>
+    {
+      adventures.map((adventure: any) => (
+        <div class="max-w-[200px]">
+          <h2>{adventure.title}</h2>
+          <p>{adventure.ageRating}</p>
+          <img
+            src={adventure.coverImage.asset.url}
+            alt={adventure.coverImage.alt}
+          />
+        </div>
+      ))
+    }
+  </div>
+
+</html>
